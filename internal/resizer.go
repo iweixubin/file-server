@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"image"
+	"image/color/palette"
 	"image/draw"
 	"image/gif"
 	"os"
@@ -62,14 +63,21 @@ func Resize(urlPath string) ([]byte, error) {
 		tGif.Disposal = g.Disposal
 		tGif.LoopCount = g.LoopCount
 
-		for i := range g.Image {
-			thumb := imaging.Thumbnail(g.Image[i], width, height, imaging.CatmullRom)
-			p := image.NewPaletted(image.Rect(0, 0, width, height), g.Image[i].Palette)
-			draw.Draw(p, image.Rect(0, 0, width, height), thumb, image.Pt(0, 0), draw.Src)
-			tGif.Image = append(tGif.Image, p)
+		firstFrame := g.Image[0].Bounds()
+		b := image.Rect(0, 0, firstFrame.Dx(), firstFrame.Dy())
+		im := image.NewRGBA(b)
+
+		for i, frame := range g.Image {
+			bounds := frame.Bounds()
+			draw.Draw(im, bounds, frame, bounds.Min, draw.Over)
+			t := imaging.Thumbnail(im, width, height, imaging.NearestNeighbor)
+			g.Image[i] = imageToPaletted(t)
 		}
 
-		gif.EncodeAll(imgBuffer, tGif)
+		g.Config.Width = width
+		g.Config.Height = height
+
+		gif.EncodeAll(imgBuffer, g)
 
 	} else {
 		srcImg, err := imaging.Open(path.Join(Cfg.SrcDir, p))
@@ -87,4 +95,11 @@ func Resize(urlPath string) ([]byte, error) {
 	CacheProxy.Set(urlPath, buffer)
 
 	return buffer, nil
+}
+
+func imageToPaletted(img image.Image) *image.Paletted {
+	b := img.Bounds()
+	pm := image.NewPaletted(b, palette.Plan9)
+	draw.FloydSteinberg.Draw(pm, b, img, image.ZP)
+	return pm
 }

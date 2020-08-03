@@ -22,7 +22,7 @@ SupportExtResize:
   - ".png"
   - ".bmp"
   #- ".gif"
-  # 不支持 gif
+  # 不推荐，调整大小后比原来的容量还要大！
 
 # 在 url 上获取尺寸的正则，宽x高
 SizeRegexp: "_(\\d{2,3})x(\\d{2,3})."
